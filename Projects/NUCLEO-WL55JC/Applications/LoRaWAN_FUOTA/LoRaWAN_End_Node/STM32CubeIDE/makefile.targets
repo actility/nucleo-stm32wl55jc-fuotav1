@@ -1,0 +1,12 @@
+
+smart-delta: $(SD_OBJS)
+	arm-none-eabi-ar rcs $(SD_LIB) $(SD_OBJS)
+	arm-none-eabi-objcopy --strip-debug $(SD_LIB)
+	mv -f $(SD_LIB) "../$(SD_LIB)"
+	
+delivery:
+	+@make --no-print-directory smart-delta && make --no-print-directory clean
+	rm ../.cproject ../.project
+	mv ../.cproject_delivery ../.cproject
+	mv ../.project_delivery ../.project
+	rm $(SD_SRCS)

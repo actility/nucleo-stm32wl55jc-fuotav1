@@ -1,0 +1,29 @@
+SD_SRCS += \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_bspatch32.c \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_bspatch32.h \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_decompress_lzg.c \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_decompress_lzg.h \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_patch_defs.h \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_patch.c \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_patch.h \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_patch_hash.c \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_patch_hash.h \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_patch_stream.c \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_patch_stream.h \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_storage.c \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_storage.h \
+	../../../../../../Middlewares/Third_Party/SmartDelta/src/fota_test.c 
+#	../../../../../../Middlewares/Third_Party/SmartDelta/crypto/verify_signature.c
+
+SD_OBJS += \
+	./Middlewares/SmartDelta/src/fota_bspatch32.o \
+	./Middlewares/SmartDelta/src/fota_decompress_lzg.o \
+	./Middlewares/SmartDelta/src/fota_patch.o \
+	./Middlewares/SmartDelta/src/fota_patch_hash.o \
+	./Middlewares/SmartDelta/src/fota_patch_stream.o \
+	./Middlewares/SmartDelta/src/fota_test.o \
+	./Middlewares/SmartDelta/src/fota_storage.o 
+#	./Middlewares/SmartDelta/crypto/verify_signature.o
+	
+SD_LIB = smartdelta.a
+

@@ -1,0 +1,108 @@
+
+FUOTA Integration
+=================
+
+I. Integration to the code based on ST Cube packages (e.g. WL55 or L476)
+
+For WL55 Cube package we are using LoRaWAN_FUOTA Application and for L476
+we are using LoRaWAN_Fuota1 Application in the STM32L476RG-Nucleo project
+
+Integration of the smart delta code support and RMC server support into standard 
+ST FOTA framework (available for example for Nucleo's WL55 or L474) consists of the
+3 main steps: 
+- configure smart delta middleware to use with FOTA project
+- ensure that SBSFU environment is available and properly configured 
+(3 regions: DOWNLOAD, NEWIMAGE, SWAP)
+- apply modifications specified below to the fresh ST code
+
+All additions or changes in the ST provided files are surrounded by the following ifdef pair
+#if (ACTILITY_SMARTDELTA == 1)
+#endif /* ACTILITY_SMARTDELTA == 1 */
+This changes should be incorporated into the fresh code together with addition 
+of the smart delta middleware
+
+1. Smart Delta middleware addition
+
+Drop middleware files into the Middlewares/Third_Party folder. Add files to the project.
+
+2. Changes in the fw_update_agent.c and fw_update_agent.c files
+
+The changes provides functionality to select either device should reset after 
+firmware upgrade preparation or note. Used for delayed upgrade.
+Changes are in function prototype and function call of FwUpdateAgent_Run()
+
+3. Changes in the LmhpFirmwareManagement.c and LmhpFirmwareManagement.h
+
+New functionality provided to:
+- send DevVersionAns message automatically upon reboot after some random delay.
+Required by RMC server
+- support of firmware image delete and correspondent request
+- support of preparation of image upgrade upon reboot if valid image is received
+and device scheduled to reboot at some specific time (or after)
+- API fucntions added to support external management of scheduled reboot status and
+image validity
+
+a) New function prototypes and definitions in order to support image validation and reboot status
+are added 
+
+bool LmhpFirmwareManagementIsRebootScheduled(void)
+LmhpFirmwareManagementUpImageStatus_t LmhpFirmwareManagementGetImageStatus(void);
+void LmhpFirmwareManagementSetImageStatus(LmhpFirmwareManagementUpImageStatus_t imagestatus);
+
+b) Additional fields to support image status and delayed reboot state are added into 
+LmhpFirmwareManagementState_t structure.
+
+  bool DevVersionAnsSentOnBoot;
+  bool IsRebootScheduled;
+  LmhpFirmwareManagementUpImageStatus_t NewImageStatus;
+  
+c) LmhpFirmwareManagementUpImageStatus_t typedef is defined 
+d) DEV_DELETE_IMAGE_REQ return status definitions are defined
+e) Send DevVersionAns on boot processing in LmhpFirmwareManagementProcess() added. 
+Additional timer DevVersionAnsTimer is added together with timer processing 
+OnDevVersionAnsTimerEvent() function
+
+f) OnRebootTimer() function is updated to prepare firwmare upgrade in case of
+delayed reboot.
+g) FW_MANAGEMENT_DEV_DELETE_IMAGE_REQ code updated to properly handle image delete request
+h) FW_MANAGEMENT_DEV_UPGRADE_IMAGE_REQ code updated to support image status
+i) FW_MANAGEMENT_DEV_REBOOT_COUNTDOWN_REQ and FW_MANAGEMENT_DEV_REBOOT_TIME_REQ code
+update to handle delayed reboot status API call and firmware image installation
+in case of immediate reboot request.
+j) LmhpFirmwareManagementInit() modified to support new LmhpFirmwareManagementState_t fields
+  
+4. Changes in the frag_decoder_if.c and frag_decoder_if.h
+
+New functionality provided to:
+- distinguish full image upgrade from smart delta upgrade
+- validate smart delta header
+- validate smart delta signature
+- unpack smart delata patch into NEWIMAGE slot
+- return to Class A in the case of delayed reboot
+or prepare new image for upgrade and initiate reboot
+
+All functionality is included into the FRAG_DECODER_IF_OnDone() function.
+LmhpFirmwareManagementSetImageStatus() API call is used to set image status
+
+
+II. Integration to the non-standard platforms based on Stackforce MAC and own HAL and drivers
+
+1. Need o integrate flash API supporting at least FLASH_WRITE and FLASH_ERASE methods. 
+Flash interface is located in flash_if.c and flash_if.h files
+
+2. Need support for timers primitives. It should be pretty simple timer configure/start/stop
+should be enough. We can utilize the same timers mechanism which is used for the LoRaWAN stack. 
+Timers with "ms" resolution are ok for the FOTA purposes
+
+3. LoRaWAN Firmware Management Package should be supported in LoRAWAN MAC. If it is not supported like 
+in the Stackforce v5.0.0 stack files LmhpFirmwareManagement.c and LmhpFirmwareManagement could be picked up
+from ST Cube distribution. Firmware Management Package should be added into LmHandler registration functions
+in LmhpPackagesRegistration.c
+
+4.Some kind of bootloader should be supported. It is assumed that bootloader should verify the validity of
+new image placed into download slot using it's header and then swap it on the place of active image.
+ST Cube distibution is using SBSFU/BFU Middleware as a bootloader. It is possible to use someones own implemetation
+of the bootloader which satisfies above requirements.
+FwUpdateAgent_Run() API located in fw_update_agent.c is used to initiate firmware installation process
+and depending on the flag "reset" will either reboot device immediately or reboot will be postponed until
+time specified using Firmware Management Package
