@@ -69,7 +69,7 @@ extern "C" {
   * \remark This parameter has an impact on the memory footprint.
   * \note FRAG_MAX_NB = (SLOT_DWL_1_END - SLOT_DWL_1_START) / FRAG_MAX_SIZE
   */
-#define FRAG_MAX_NB                                 387
+#define FRAG_MAX_NB                                 1000
 
 /*!
   * Maximum fragment size that can be handled.
@@ -84,7 +84,7 @@ extern "C" {
   * \remark This parameter has an impact on the memory footprint.
   * \note FRAG_MAX_NB * 0.10 (with redundancy = 10 %)
   */
-#define FRAG_MAX_REDUNDANCY                         39
+#define FRAG_MAX_REDUNDANCY                         30
 
 #endif /* INTEROP_TEST_MODE */
 
