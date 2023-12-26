@@ -33,3 +33,5 @@ crypto.txt
 *.o
 *.su
 /Debug/
+**/Binary/
+**/__pycache__/
