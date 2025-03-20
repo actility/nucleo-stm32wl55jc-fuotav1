@@ -14,37 +14,14 @@ Description: FOTA storage handling
 /* Includes ------------------------------------------------------------------*/
 #include "platform.h"
 
-#include "sfu_fwimg_regions.h"
-
 #include "flash_if.h"
 #include "se_def_metadata.h"
 
 /* Exported constants --------------------------------------------------------*/
 
-/*
- * Size of buffer storage used in patch as uncompress buffer
- * and temporary storage to keep contents of rewritten
- * flash page. Should no less then MCU flash page size
- * and match compression ratio in patch processing
- */
-#define RAM_STORAGE_SZ   2048
-
-#define FLASH_ALIGN             8       /* Alignment of flash write operations */
-#define NEWIMAGE_BUF_SIZE       8       /* Size of temporary NEWIMAGE write buffer to provide 64 bit alignment, multiple of FLSH_ALIGN ! */
+#define NEWIMAGE_BUF_SIZE       512     /* Size of temporary NEWIMAGE write buffer to provide 64 bit alignment, multiple of FLASH_ALIGN ! */
 #define SMARTDELTA_MAC_LEN      72      /* Size of Smart Delta crypto signature (including padding) */
-#define FIRMWARE_MAGIC          0x31554653 /* Firmware file magic to distinguish from binary - "SFU1" */
-
-#define FOTA_SWAP_REGION_START              ((uint32_t)(SlotStartAdd[SLOT_SWAP]))
-#define FOTA_SWAP_REGION_SIZE               ((uint32_t)(SlotEndAdd[SLOT_SWAP] - SlotStartAdd[SLOT_SWAP] + 1U))
-#define FOTA_SWAP_REGION_END                ((uint32_t)(SlotEndAdd[SLOT_SWAP]))
-
-#define FOTA_DWL_REGION_START               ((uint32_t)(SlotStartAdd[SLOT_DWL_1]))
-#define FOTA_DWL_REGION_SIZE                ((uint32_t)(SlotEndAdd[SLOT_DWL_1] - SlotStartAdd[SLOT_DWL_1] + 1U))
-#define FOTA_DWL_REGION_END                 ((uint32_t)(SlotEndAdd[SLOT_DWL_1]))
-
-#define FOTA_ACT_REGION_START               ((uint32_t)(SlotStartAdd[SLOT_ACTIVE_1]))
-#define FOTA_ACT_REGION_SIZE                ((uint32_t)(SlotEndAdd[SLOT_ACTIVE_1] - SlotStartAdd[SLOT_ACTIVE_1] + 1U))
-#define FOTA_ACT_REGION_END                 ((uint32_t)(SlotEndAdd[SLOT_ACTIVE_1])
+#define TMP_READBUF_SIZE		512		/* Size of buffer to temporary store content of external flash before write it back */
 
 typedef enum storage_status_s {
     STR_OK = 0,
@@ -106,7 +83,7 @@ int32_t fota_storage_read(uint8_t *data, uint32_t size, storage_status_t *error)
 /**
   * Initializes internal data structures and pointers prior to start of
   * Smart Delta patch processing. Move patch from start of DOWNLOAD region
-  * to the beginning of highest possible page in DOWNLOAD region.
+  * to the beginning of the highest possible page in DOWNLOAD region.
   *
   * \param [IN]  size Size of the Smart Delta patch in DOWNLOAD region
   * \param [OUT] error Error contains pointer to the code of the error occurred
@@ -114,15 +91,6 @@ int32_t fota_storage_read(uint8_t *data, uint32_t size, storage_status_t *error)
   * \retval status Read operation status [-1 Fail (error contains code), 0 Success]
   */
 int32_t fota_storage_init(uint32_t size, storage_status_t *error);
-
-/**
-  * Allocate RAM buffer for use during patch processing
-  *
-  * \param [OUT] ram_buf pointer where to write ram buffer start pointer
-  *
-  * \retval size Size of RAM buffer returned or 0 on failure
-  */
-uint32_t fota_storage_get_rambuf(uint8_t **ram_buf);
 
 /**
   * Virtually write one byte to the flash. As all writes should be aligned
@@ -151,27 +119,13 @@ int32_t fota_storage_write_byte (uint8_t b, storage_status_t *error);
 int32_t fota_storage_flush( storage_status_t *error );
 
 /**
-  * Get address of the ACTIVE region start
-  *
-  * \retval address Start of ACTIVE region address
-  */
-uint32_t fota_storage_get_active_start(void);
-
-/**
-  * Get length of the ACTIVE region in bytes
-  *
-  * \retval length Length of the ACTIVE region in bytes
-  */
-uint32_t fota_storage_get_active_len(void);
-
-/**
  * Write chunk of arbitrary size data into flash
  * We need it to workaround ST's FLASH_IF_Write() bug which
  * do not properly support multipage writes
  * with page aligned start and page unaligned end.
  *
  * \param [IN] addr Destination address in the flash
- * \param [IN] data Source address
+ * \param [IN] data Source address RAM or flash (external or internal)
  * \param [IN] size Write size in bytes
  *
  * \retval status of the operation [FLASH_OK or fail code otherwise]

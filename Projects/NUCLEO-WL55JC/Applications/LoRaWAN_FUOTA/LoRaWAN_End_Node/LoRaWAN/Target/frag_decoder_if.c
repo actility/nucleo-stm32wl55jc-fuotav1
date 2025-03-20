@@ -43,6 +43,12 @@
 /* External variables ---------------------------------------------------------*/
 /* USER CODE BEGIN EV */
 
+/**
+ * RAM buffer for page uncompression. Should match flash page size.
+ * Should match flash page size specified in FOTA server device profile.
+ */
+uint8_t ram_buf[FLASH_PAGE_SIZE];
+
 /* USER CODE END EV */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -109,11 +115,6 @@ const LmhpFragmentationParams_t FRAG_DECODER_IF_FragmentationParams =
   * Un-fragmented data storage.
   */
 static uint8_t UnfragmentedData[UNFRAGMENTED_DATA_SIZE];
-#else
-/**
-  * Temp buffer to store fragment in RAM to avoid several Flash write
-  */
-static uint8_t FRAG_DECODER_IF_RAM_buffer[FLASH_PAGE_SIZE];
 #endif /* INTEROP_TEST_MODE */
 
 /* USER CODE BEGIN PV */
@@ -140,91 +141,60 @@ static uint32_t Crc32(uint8_t *buffer, uint16_t length);
 /* Exported functions --------------------------------------------------------*/
 int32_t FRAG_DECODER_IF_Erase(void)
 {
+  int32_t status = FLASH_IF_OK;
   /* USER CODE BEGIN FRAG_DECODER_IF_Erase_1 */
 
   /* USER CODE END FRAG_DECODER_IF_Erase_1 */
-  int32_t status = FLASH_OK;
 #if (INTEROP_TEST_MODE == 1)
   UTIL_MEM_set_8(UnfragmentedData, 0xFF, UNFRAGMENTED_DATA_SIZE);
 #else /* INTEROP_TEST_MODE == 0 */
-  uint32_t first_page = PAGE(FRAG_DECODER_DWL_REGION_START);
-  uint32_t nb_pages = PAGE(FRAG_DECODER_DWL_REGION_START + FRAG_DECODER_DWL_REGION_SIZE - 1) - first_page + 1U;
-
-  if (HAL_FLASH_Unlock() == HAL_OK)
-  {
-    status = FLASH_IF_EraseByPages(first_page, nb_pages, 0U);
-    /* Lock the Flash to disable the flash control register access (recommended
-    to protect the FLASH memory against possible unwanted operation) *********/
-    HAL_FLASH_Lock();
-  }
-  else
-  {
-    status = FLASH_LOCK_ERROR;
-  }
+  status = FLASH_IF_Erase((void *)FRAG_DECODER_DWL_REGION_START, FRAG_DECODER_DWL_REGION_SIZE);
 
 #endif /* INTEROP_TEST_MODE */
-  if (status != FLASH_OK)
-  {
-    status = FLASH_ERROR;
-  }
-  return status;
   /* USER CODE BEGIN FRAG_DECODER_IF_Erase_2 */
 
   /* USER CODE END FRAG_DECODER_IF_Erase_2 */
+  return status;
 }
 
 int32_t FRAG_DECODER_IF_Write(uint32_t addr, uint8_t *data, uint32_t size)
 {
+  int32_t status = FLASH_IF_OK;
   /* USER CODE BEGIN FRAG_DECODER_IF_Write_1 */
 
   /* USER CODE END FRAG_DECODER_IF_Write_1 */
-  int32_t status = FLASH_OK;
-
 #if (INTEROP_TEST_MODE == 1)  /*write fragment in RAM - Caching mode*/
   UTIL_MEM_cpy_8(&UnfragmentedData[addr], data, size);
 #else /* INTEROP_TEST_MODE == 0 */
-  APP_LOG(TS_OFF, VLEVEL_H, "Trying FLASH_IF_WRITE: flash: %x data: %x size: %d\r\n", addr, data, size);
-  if (HAL_FLASH_Unlock() == HAL_OK)
-  {
-    status = FLASH_IF_Write(FRAG_DECODER_DWL_REGION_START + addr, data, size, FRAG_DECODER_IF_RAM_buffer);
-    APP_LOG(TS_OFF, VLEVEL_H, "FLASH_IF_WRITE: flash: %x data: %x size: %d\r\n", addr, data, size);
-    HAL_FLASH_Lock();
-  }
-  else
-  {
-    status = FLASH_LOCK_ERROR;
-  }
 
-  if (status != FLASH_OK)
+  status = FLASH_IF_Write((void *)(FRAG_DECODER_DWL_REGION_START + addr), (const void *)data, size);
+
+  if (status != FLASH_IF_OK)
   {
-    APP_LOG(TS_OFF, VLEVEL_M, "\r\n....... !! FLASH_IF_WRITE_ERROR: %d !! .......\r\n", status);
+    APP_LOG(TS_OFF, VLEVEL_M, "\r\n.... !! FLASH_IF_WRITE_ERROR: %d !! ....\r\n", status);
   }
 #endif /* INTEROP_TEST_MODE */
-  if (status != FLASH_OK)
-  {
-    status = FLASH_ERROR;
-  }
-  return status;
   /* USER CODE BEGIN FRAG_DECODER_IF_Write_2 */
 
   /* USER CODE END FRAG_DECODER_IF_Write_2 */
+  return status;
 }
 
 int32_t FRAG_DECODER_IF_Read(uint32_t addr, uint8_t *data, uint32_t size)
 {
+  int32_t status = FLASH_IF_OK;
   /* USER CODE BEGIN FRAG_DECODER_IF_Read_1 */
 
   /* USER CODE END FRAG_DECODER_IF_Read_1 */
 #if (INTEROP_TEST_MODE == 1)   /*Read fragment in RAM - Caching mode*/
   UTIL_MEM_cpy_8(data, &UnfragmentedData[addr], size);
 #else /* INTEROP_TEST_MODE == 0 */
-  UTIL_MEM_cpy_8(data, (void *)(FRAG_DECODER_DWL_REGION_START + addr), size);
+  FLASH_IF_Read((void *)data, (const void *)(FRAG_DECODER_DWL_REGION_START + addr), size);
 #endif /* INTEROP_TEST_MODE */
-
-  return FLASH_OK;
   /* USER CODE BEGIN FRAG_DECODER_IF_Read_2 */
 
   /* USER CODE END FRAG_DECODER_IF_Read_2 */
+  return status;
 }
 
 void FRAG_DECODER_IF_OnProgress(uint16_t fragCounter, uint16_t fragNb, uint8_t fragSize, uint16_t fragNbLost)
@@ -255,13 +225,16 @@ static void ResetDelayTimer_cb(void *context)
 
 void FRAG_DECODER_IF_OnDone(int32_t status, uint32_t size)
 {
+  uint32_t FileRxCrc;
+
   /* USER CODE BEGIN FRAG_DECODER_IF_OnDone_1 */
 
   /* USER CODE END FRAG_DECODER_IF_OnDone_1 */
-  APP_LOG(TS_OFF, VLEVEL_M, "\r\n....... FRAG_DECODER Finished .......\r\n");
-  APP_LOG(TS_OFF, VLEVEL_M, "STATUS      : %d\r\n", status);
+  APP_LOG(TS_OFF, VLEVEL_M, "\r\n.... FRAG_DECODER Finished ....\r\n");
+  APP_LOG(TS_OFF, VLEVEL_M, "STATUS     : %d\r\n", status);
 
 #if (INTEROP_TEST_MODE == 0)
+  /* Do a request to Run the Secure boot - The file is already in flash */
 #if (ACTILITY_SMARTDELTA == 0)
   /* Do a request to Run the Secure boot - The file is already in flash */
   FwUpdateAgent_Run();
@@ -274,20 +247,19 @@ void FRAG_DECODER_IF_OnDone(int32_t status, uint32_t size)
     APP_LOG(TS_OFF, VLEVEL_M, "Binary file received, no firmware magic found\r\n");
     goto cleanup;
   }
-  datafile += SFU_IMG_IMAGE_OFFSET;
-  if( size <= SFU_IMG_IMAGE_OFFSET )
+  datafile += FLASH_IF_Image_Offset ();
+  if( size <= FLASH_IF_Image_Offset () )
   {
-    APP_LOG(TS_OFF, VLEVEL_M, "File size: %u less then: %u error\r\n", size, SFU_IMG_IMAGE_OFFSET);
+    APP_LOG(TS_OFF, VLEVEL_M, "File size: %u less then: %u error\r\n", size, FLASH_IF_Image_Offset ());
     goto cleanup;
   }
-  if( fota_patch_verify_header(datafile) == SMARTDELTA_OK )
+  if( fota_patch_verify_header((uint32_t)datafile) == SMARTDELTA_OK )
   {
-
 #ifndef NO_CRYPTO
-    if( fota_patch_verify_signature (datafile, size - SFU_IMG_IMAGE_OFFSET) == SMARTDELTA_OK ) {
+    if( fota_patch_verify_signature (datafile, size - FLASH_IF_Image_Offset ()) == SMARTDELTA_OK ) {
 #endif
       APP_LOG(TS_OFF, VLEVEL_M, "Patch size: %u\r\n", size);
-      fota_patch_result_t patch_res = fota_patch(size);
+      fota_patch_result_t patch_res = fota_patch(size, ram_buf, FLASH_IF_Page_Size());
       if (patch_res == fotaOk) {
         LmhpFirmwareManagementSetImageStatus(FW_MANAGEMENT_VALID_IMAGE);
         APP_LOG(TS_OFF, VLEVEL_M, "\r\n...... Smart Delta to Flash Succeeded  ......\r\n");
@@ -311,32 +283,42 @@ void FRAG_DECODER_IF_OnDone(int32_t status, uint32_t size)
   /*
    * All fragments received and processed. Switch to Class A
    * and signal multicast session is finished
+   *
+   * TODO: Need to process delayed reboot
    */
 cleanup:
-
+#ifdef  SDTEST
+  /*
+   * For TESTS ONLY !!!
+   */
+  if ( LmhpFirmwareManagementGetImageStatus() == FW_MANAGEMENT_VALID_IMAGE) {
+     FwUpdateAgent_Run(false);
+  }
+  /********************/
+#endif
   LmHandlerRequestClass( CLASS_A );
   if ( LmhpFirmwareManagementIsRebootScheduled() != true &&
       LmhpFirmwareManagementGetImageStatus() == FW_MANAGEMENT_VALID_IMAGE) {
-    uint32_t delay = LmhpFragmentationGetTxDelay();
-    APP_LOG(TS_OFF, VLEVEL_M, "\r\nfw update scheduled in %ums\r\n", delay);
-    if(delay) {
-      static TimerEvent_t ResetDelayTimer;
-      TimerInit(&ResetDelayTimer, ResetDelayTimer_cb);
-      TimerSetValue(&ResetDelayTimer, delay);
-      TimerStart(&ResetDelayTimer);
-    } else {
-      FwUpdateAgent_Run(true);
-    }
+      uint32_t delay = LmhpFragmentationGetTxDelay();
+      APP_LOG(TS_OFF, VLEVEL_M, "\r\nfw update scheduled in %ums\r\n", delay);
+      if(delay) {
+        static TimerEvent_t ResetDelayTimer;
+        TimerInit(&ResetDelayTimer, ResetDelayTimer_cb);
+        TimerSetValue(&ResetDelayTimer, delay);
+        TimerStart(&ResetDelayTimer);
+      } else {
+        FwUpdateAgent_Run(true);
+      }
   }
 
 #endif /* ACTILITY_SMARTDELTA == 0 */
-#else
-  uint32_t FileRxCrc = Crc32(UnfragmentedData, size);
-  APP_LOG(TS_OFF, VLEVEL_M, "Size      : %d\r\n", size);
-  APP_LOG(TS_OFF, VLEVEL_M, "CRC         : %08X\r\n\r\n", FileRxCrc);
 
-  BSP_LED_Off(LED_BLUE);
+  FileRxCrc = FLASH_IF_CRC32(FRAG_DECODER_DWL_REGION_START, size);
+#else
+  FileRxCrc = Crc32(UnfragmentedData, size);
 #endif /* INTEROP_TEST_MODE == 1 */
+  APP_LOG(TS_OFF, VLEVEL_M, "Size       : %05d Bytes\r\n", size);
+  APP_LOG(TS_OFF, VLEVEL_M, "CRC        : %08X\r\n\r\n", FileRxCrc);
   /* USER CODE BEGIN FRAG_DECODER_IF_OnDone_2 */
 
   /* USER CODE END FRAG_DECODER_IF_OnDone_2 */

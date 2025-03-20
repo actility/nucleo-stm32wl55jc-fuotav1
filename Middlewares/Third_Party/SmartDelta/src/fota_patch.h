@@ -24,9 +24,11 @@ Description: FOTA Firmware Patching Support
  * patch chunk is moved to SWAP region to avoid overlapping.
  *
  * \param len Length of total patch binary received (including header and signature trailer)
+ * \param ram_buf Pointer to the buffer in RAM for patch uncompression, should match flash page size
+ * \param ram_buf_sz Size of ram_buf uncompression buffer
  * \retval Result of patch unpacking. See fota_patch_result_t type definition in fota_patch_defs.h
  */
-fota_patch_result_t fota_patch(uint32_t len);
+fota_patch_result_t fota_patch(uint32_t len, uint8_t *ram_buf, uint32_t ram_buf_sz);
 
 /**
  * \brief Verify patch magic to decide if binary just received could
@@ -35,15 +37,8 @@ fota_patch_result_t fota_patch(uint32_t len);
  * \param fwimagebody Pointer to the area with possible smart delta patch
  * \retval SMARTDELTA_OK if successful, SMARTDELTA_ERROR otherwise.
  */
-int32_t fota_patch_verify_header (const uint8_t * fwimagebody);
+int32_t fota_patch_verify_header (uint32_t fwimagebody);
 
-/**
-  * \brief Process smart delta patch after all fota fragments are received
-  *
-  * \param status Status of fragments transfer
-  * \param size Length of file received
-  */
-void fota_frag_decoder_if_ondone(int32_t status, uint32_t size);
 //----------------------------------------------------------------------------
 #endif /* __PATCH_H__ */
 

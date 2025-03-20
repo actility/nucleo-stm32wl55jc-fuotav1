@@ -53,9 +53,9 @@ void SystemClock_Config(void);
 #include "lora_app_version.h"
 void  test_runner(void);
 int testmode = 0;
-#if     __APP_VERSION == 0x1010200
-char *__filler = "q"; /* asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890!@#$%^&*()_+-={}|:<>?[];',./"; /**/
-#elif   __APP_VERSION == 0x1010100
+#if     __APP_VERSION == 0x1010100
+char *__filler = "qasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890!@#$%asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890!@#$%^&*()_+-={}|:<>?[];',./"; /* asdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890!@#$%^&*()_+-={}|:<>?[];',./"; /**/
+#elif   __APP_VERSION == 0x1010000
 char *__filler = "qwert"; /**/
 #else
 #error  "Invalid APP_VERSION"

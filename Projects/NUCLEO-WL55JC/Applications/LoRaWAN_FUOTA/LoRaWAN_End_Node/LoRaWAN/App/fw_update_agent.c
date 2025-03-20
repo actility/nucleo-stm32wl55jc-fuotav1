@@ -92,49 +92,41 @@ void FwUpdateAgent_Run(void)
 {
   /* USER CODE BEGIN FwUpdateAgent_Run_1 */
 
-  /* USER CODE END FwUpdateAgent_Run_1 */
-  int32_t status = FLASH_OK;
-  uint8_t fw_header_dwl_slot[SE_FW_HEADER_TOT_LEN];
-  uint32_t first_page = PAGE(FRAG_DECODER_SWAP_REGION_START);
-  uint32_t nb_pages = PAGE(FRAG_DECODER_SWAP_REGION_START + SFU_IMG_IMAGE_OFFSET - 1) - first_page + 1U;
+    /* USER CODE END FwUpdateAgent_Run_1 */
+    int32_t status = FLASH_IF_OK;
+    uint8_t fw_header_dwl_slot[SE_FW_HEADER_TOT_LEN];
 
-  /* Read header in slot 1 */
-  UTIL_MEM_cpy_8(fw_header_dwl_slot, (void *)FRAG_DECODER_DWL_REGION_START, SE_FW_HEADER_TOT_LEN);
+    /* Read header in slot 1 */
+    FLASH_IF_Read((void *)fw_header_dwl_slot, (const void *)FRAG_DECODER_DWL_REGION_START, SE_FW_HEADER_TOT_LEN);
 
-  /* Ask for installation at next reset */
-  if (HAL_FLASH_Unlock() == HAL_OK)
-  {
-    status = FLASH_IF_EraseByPages(first_page, nb_pages, 0U);
+    /* Ask for installation at next reset */
+    status = FLASH_IF_Erase((void *)FRAG_DECODER_SWAP_REGION_START, FRAG_DECODER_SWAP_REGION_SIZE);
 
-    if (status == FLASH_OK)
+    if (status == FLASH_IF_OK)
     {
-      status = FLASH_IF_Write(FRAG_DECODER_SWAP_REGION_START, fw_header_dwl_slot, SE_FW_HEADER_TOT_LEN, NULL);
+      status = FLASH_IF_Write((void *)FRAG_DECODER_SWAP_REGION_START,
+                              (const void *)fw_header_dwl_slot,
+                              SE_FW_HEADER_TOT_LEN);
     }
-    HAL_FLASH_Lock();
-  }
-  else
-  {
-    status = FLASH_LOCK_ERROR;
-  }
 
-  if (status == FLASH_OK)
-  {
-#if (ACTILITY_SMARTDELTA == 1)
-    if (reset) {
-#endif /* ACTILITY_SMARTDELTA == 1 */
-      /* System Reboot*/
-      NVIC_SystemReset();
-#if (ACTILITY_SMARTDELTA == 1)
+    if (status == FLASH_IF_OK)
+    {
+  #if (ACTILITY_SMARTDELTA == 1)
+      if (reset) {
+  #endif /* ACTILITY_SMARTDELTA == 1 */
+        /* System Reboot*/
+        NVIC_SystemReset();
+  #if (ACTILITY_SMARTDELTA == 1)
+      }
+  #endif /* ACTILITY_SMARTDELTA == 1 */
     }
-#endif /* ACTILITY_SMARTDELTA == 1 */
-  }
-  else
-  {
-    APP_LOG(TS_OFF, VLEVEL_M, "FW Update Agent Run Failed\r\n");
-  }
-  /* USER CODE BEGIN FwUpdateAgent_Run_2 */
+    else
+    {
+      APP_LOG(TS_OFF, VLEVEL_M, "FW Update Agent Run Failed\r\n");
+    }
+    /* USER CODE BEGIN FwUpdateAgent_Run_2 */
 
-  /* USER CODE END FwUpdateAgent_Run_2 */
+    /* USER CODE END FwUpdateAgent_Run_2 */
 }
 #endif /* INTEROP_TEST_MODE */
 

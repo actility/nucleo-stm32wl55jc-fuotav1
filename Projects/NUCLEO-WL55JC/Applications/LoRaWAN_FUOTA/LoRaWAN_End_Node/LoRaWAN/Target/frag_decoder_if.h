@@ -63,44 +63,50 @@ extern "C" {
 #define FRAG_MAX_REDUNDANCY                         5
 
 #else /* INTEROP_TEST_MODE == 0 */
-/*!
-  * Maximum number of fragment that can be handled.
+  /*!
+    * Maximum number of fragment that can be handled.
+    *
+    * \remark This parameter has an impact on the memory footprint.
+    * \note FRAG_MAX_NB = (FRAG_DECODER_DWL_REGION_SIZE) / FRAG_MAX_SIZE
+    */
+  #define FRAG_MAX_NB                                 2151
+
+  /*!
+    * Maximum fragment size that can be handled.
+    *
+    * \remark This parameter has an impact on the memory footprint.
+    */
+  #define FRAG_MAX_SIZE                               240
+
+  /*!
+  * Minimum fragment size that can be handled.
   *
   * \remark This parameter has an impact on the memory footprint.
-  * \note FRAG_MAX_NB = (SLOT_DWL_1_END - SLOT_DWL_1_START) / FRAG_MAX_SIZE
   */
-#define FRAG_MAX_NB                                 1000
+  #define FRAG_MIN_SIZE                               40
+  /*!
+    * Maximum number of extra frames that can be handled.
+    *
+    * \remark This parameter has an impact on the memory footprint.
+    * \note FRAG_MAX_NB * 0.10 (with redundancy = 10 %)
+    */
+  #define FRAG_MAX_REDUNDANCY                         216
 
-/*!
-  * Maximum fragment size that can be handled.
-  *
-  * \remark This parameter has an impact on the memory footprint.
-  */
-#define FRAG_MAX_SIZE                               222
+  #endif /* INTEROP_TEST_MODE */
 
-/*!
-  * Maximum number of extra frames that can be handled.
-  *
-  * \remark This parameter has an impact on the memory footprint.
-  * \note FRAG_MAX_NB * 0.10 (with redundancy = 10 %)
-  */
-#define FRAG_MAX_REDUNDANCY                         30
+  #define FRAG_DECODER_SWAP_REGION_START              ((uint32_t)(SlotStartAdd[SLOT_SWAP]))
 
-#endif /* INTEROP_TEST_MODE */
+  #define FRAG_DECODER_SWAP_REGION_SIZE               ((uint32_t)(SlotEndAdd[SLOT_SWAP] - SlotStartAdd[SLOT_SWAP] + 1U))
 
-#if (ACTILITY_SMARTDELTA == 1)
-#define FRAG_DECODER_SWAP_REGION_START              ((uint32_t)(SlotStartAdd[SLOT_SWAP]))
+  #define FRAG_DECODER_DWL_REGION_START               ((uint32_t)(SlotStartAdd[SLOT_DWL_1]))
 
-#define FRAG_DECODER_SWAP_REGION_SIZE               ((uint32_t)(SlotEndAdd[SLOT_SWAP] - SlotStartAdd[SLOT_SWAP] + 1U))
+  #define FRAG_DECODER_DWL_REGION_SIZE                ((uint32_t)(SlotEndAdd[SLOT_DWL_1] - SlotStartAdd[SLOT_DWL_1] + 1U))
 
-#define FRAG_DECODER_DWL_REGION_START               ((uint32_t)(SlotStartAdd[SLOT_DWL_1]))
+  /* USER CODE BEGIN ED */
 
-#define FRAG_DECODER_DWL_REGION_SIZE                ((uint32_t)(SlotEndAdd[SLOT_DWL_1] - SlotStartAdd[SLOT_DWL_1] + 1U))
-#endif /* ACTILITY_SMARTDELTA == 1 */
+  #define FIRMWARE_MAGIC          0x31554653 /* Firmware file magic to distinguish from binary - "SFU1" */
 
-/* USER CODE BEGIN ED */
-
-/* USER CODE END ED */
+  /* USER CODE END ED */
 
 /* Exported types ------------------------------------------------------------*/
 
