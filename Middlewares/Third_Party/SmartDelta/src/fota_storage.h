@@ -21,7 +21,7 @@ Description: FOTA storage handling
 
 #define NEWIMAGE_BUF_SIZE       512     /* Size of temporary NEWIMAGE write buffer to provide 64 bit alignment, multiple of FLASH_ALIGN ! */
 #define SMARTDELTA_MAC_LEN      72      /* Size of Smart Delta crypto signature (including padding) */
-#define TMP_READBUF_SIZE		512		/* Size of buffer to temporary store content of external flash before write it back */
+#define TMP_READBUF_SIZE	512     /* Size of buffer to temporary store content of external flash before write it back */
 
 typedef enum storage_status_s {
     STR_OK = 0,
