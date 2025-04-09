@@ -128,8 +128,8 @@ will be lifted in the future.
 - Install STM32Cube IDE 1.12.0 or later:
 <https://www.st.com/en/development-tools/stm32cubeide.html>
 
-- Clone this git repository (`git@github.com:actility/nucleo-stm32wl55jc-fuota`
-or <https://github.com/actility/nucleo-stm32wl55jc-fuota>)
+- Clone this git repository (`git@github.com:actility/nucleo-stm32wl55jc-fuotav1`
+or <https://github.com/actility/nucleo-stm32wl55jc-fuotav1>)
 
 - Start STM32CubeIDE application
 
